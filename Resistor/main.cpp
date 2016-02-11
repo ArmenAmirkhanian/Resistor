@@ -45,9 +45,12 @@ int InitializePort() {
 		std::wstring comPortString(L"COM0");
 		comPortString.replace(3, 1, std::to_wstring(j));
 		const wchar_t* comPort = comPortString.c_str();
+		std::cout << "Checking port ";
+		std::wcout << comPortString;
+		std::cout << "...";
 		Resipod = CreateFile(comPort, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 		if (Resipod == INVALID_HANDLE_VALUE) {
-			
+			std::cout << "invalid handle\n";
 		}
 		else {
 			ResipodParam.DCBlength = sizeof(ResipodParam);
@@ -61,9 +64,9 @@ int InitializePort() {
 
 			// Set some timeout values
 			COMMTIMEOUTS timeouts = { 0 };
-			timeouts.ReadIntervalTimeout = 2000;
-			timeouts.ReadTotalTimeoutConstant = 2000;
-			timeouts.ReadTotalTimeoutMultiplier = 10;
+			timeouts.ReadIntervalTimeout = 200;
+			timeouts.ReadTotalTimeoutConstant = 0;
+			timeouts.ReadTotalTimeoutMultiplier = 1;
 			timeouts.WriteTotalTimeoutConstant = 2000;
 			timeouts.WriteTotalTimeoutMultiplier = 10;
 
@@ -75,6 +78,7 @@ int InitializePort() {
 			DWORD bytesReadID = 0;
 			WriteFile(Resipod, getID, 5, &bytesWriteID, NULL);
 			ReadFile(Resipod, receiveID, 8, &bytesReadID, NULL);
+			std::cout << receiveID << "\n";
 			if (strcmp(receiveID,correctID)) {
 				return(j);
 			}
