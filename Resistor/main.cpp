@@ -40,29 +40,46 @@ void GetResistance() {
 	}
 }
 
-DWORD InitializePort() {
-	Resipod = CreateFile(L"COM5", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-	if (Resipod == INVALID_HANDLE_VALUE) {
-		return(GetLastError());
+int InitializePort() {
+	for (int j = 1; j <= 9; j++) {
+		std::wstring comPortString(L"COM0");
+		comPortString.replace(3, 1, std::to_wstring(j));
+		const wchar_t* comPort = comPortString.c_str();
+		Resipod = CreateFile(comPort, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+		if (Resipod == INVALID_HANDLE_VALUE) {
+			
+		}
+		else {
+			ResipodParam.DCBlength = sizeof(ResipodParam);
+
+			// Hardcode serial parameters based on Resipod data
+			GetCommState(Resipod, &ResipodParam);
+			ResipodParam.BaudRate = CBR_19200;
+			ResipodParam.ByteSize = 8;
+			ResipodParam.StopBits = 1;
+			ResipodParam.Parity = NOPARITY;
+
+			// Set some timeout values
+			COMMTIMEOUTS timeouts = { 0 };
+			timeouts.ReadIntervalTimeout = 2000;
+			timeouts.ReadTotalTimeoutConstant = 2000;
+			timeouts.ReadTotalTimeoutMultiplier = 10;
+			timeouts.WriteTotalTimeoutConstant = 2000;
+			timeouts.WriteTotalTimeoutMultiplier = 10;
+
+			// Get ID on port to see if it is a Proceq device
+			byte getID[] = { 0x10,0x49,0x44,0x0D };
+			char receiveID[8] = {0};
+			char correctID[8] = "Resipod";
+			DWORD bytesWriteID = 0;
+			DWORD bytesReadID = 0;
+			WriteFile(Resipod, getID, 5, &bytesWriteID, NULL);
+			ReadFile(Resipod, receiveID, 8, &bytesReadID, NULL);
+			if (strcmp(receiveID,correctID)) {
+				return(j);
+			}
+		}
 	}
-
-	ResipodParam.DCBlength = sizeof(ResipodParam);
-
-	// Hardcode serial parameters based on Resipod data
-	GetCommState(Resipod, &ResipodParam);
-	ResipodParam.BaudRate = CBR_19200;
-	ResipodParam.ByteSize = 8;
-	ResipodParam.StopBits = 1;
-	ResipodParam.Parity = NOPARITY;
-
-	// Set some timeout values
-	COMMTIMEOUTS timeouts = { 0 };
-	timeouts.ReadIntervalTimeout = 2000;
-	timeouts.ReadTotalTimeoutConstant = 2000;
-	timeouts.ReadTotalTimeoutMultiplier = 10;
-	timeouts.WriteTotalTimeoutConstant = 2000;
-	timeouts.WriteTotalTimeoutMultiplier = 10;
-
 	return(0);
 }
 
@@ -80,14 +97,19 @@ void DisplayHeader() {
 
 int main() {
 	char TestInterface;
+	char dummy;
 	DisplayHeader();
 	std::cout << "Initializing serial port interface...\n\n";
-	DWORD PortOpen = InitializePort();
-	if (PortOpen != 0) {
-		std::cout << "failed (Error Code: " << PortOpen << ")\n";
+	int PortOpen = InitializePort();
+	if (PortOpen = 0) {
+		std::cout << "no Resipod device found!\n";
+		std::cout << "Press any key to terminate program...";
+		std::cin >> dummy;
+		return(EXIT_FAILURE);
 	}
 	else {
 		std::cout << "success!\n\n";
+		std::cout << "Resipod device is on COM" << PortOpen << "\n";
 	}
 	std::cout << "Current test program will obtain three readings at an interval of 3 seconds.\n";
 	std::cout << "Press any key when ready to test interface...";
