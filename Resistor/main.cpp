@@ -59,6 +59,7 @@ int InitializePort() {
 		else {
 			std::cout << "error opening port\n";
 		}
+		return(0);
 	}
 	else {
 		std::cout << "success!\n";
@@ -84,7 +85,7 @@ int InitializePort() {
 		timeouts.WriteTotalTimeoutMultiplier = 1;
 
 		// Get ID on port to see if it is a Proceq device
-		byte command[] = { 0xC1,0xD2,0x21 };
+		/*byte command[] = { 0xC1,0xD2,0x21 };
 		byte getID[] = { 0x10,0x49,0x44,0x0D };
 		char receiveID[8] = {0};
 		char correctID[8] = "Resipod";
@@ -102,11 +103,11 @@ int InitializePort() {
 			if (strcmp(receiveID, correctID)) {
 				return(j);
 			}
-		}
+		}*/
 			
 	}
 	
-	return(0);
+	return(userComPort);
 }
 
 void DisplayHeader() {
@@ -118,14 +119,14 @@ void DisplayHeader() {
 	std::cout << "  | $$  \\ $$| $$       /$$  \\ $$  | $$   /$$  \\ $$   | $$  | $$  | $$| $$  \\ $$\n";
 	std::cout << "  | $$  | $$| $$$$$$$$|  $$$$$$/ /$$$$$$|  $$$$$$/   | $$  |  $$$$$$/| $$  | $$\n";
 	std::cout << "  |__/  |__/|________/ \\______/ |______/ \\______/    |__/   \\______/ |__/  |__/\n";
-	std::cout << "\n\n Current code is in testing phase. Do NOT use for research purposes...\n\n";
+	std::cout << "\n\n    Current code is in testing phase. Do NOT use for research purposes...\n\n";
 }
 
 int main() {
 	char TestInterface;
 	char dummy;
 	DisplayHeader();
-	std::cout << "Initializing serial port interface...\n\n";
+	std::cout << "Initializing serial port interface...";
 	int PortOpen = InitializePort();
 	if (PortOpen = 0) {
 		std::cout << "no Resipod device found!\n";
@@ -166,7 +167,7 @@ int main() {
 
 		std::cout << "Decimal number: " << reading << "\n";
 		std::cout << "Binary number: " << std::bitset<16>(reading) << "\n";
-		std::cout << "Resistance: " << resistance << " ohms\n";
+		std::cout << "Resistance: " << resistance << " ohms\n\n\n";
 		std::cin >> reading;
 	}
 
