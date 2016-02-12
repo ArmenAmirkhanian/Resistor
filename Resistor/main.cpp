@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <exception>
 #include <bitset>
 #include <stdlib.h>
@@ -41,49 +42,70 @@ void GetResistance() {
 }
 
 int InitializePort() {
-	for (int j = 1; j <= 9; j++) {
-		std::wstring comPortString(L"COM0");
-		comPortString.replace(3, 1, std::to_wstring(j));
-		const wchar_t* comPort = comPortString.c_str();
-		std::cout << "Checking port ";
-		std::wcout << comPortString;
-		std::cout << "...";
-		Resipod = CreateFile(comPort, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-		if (Resipod == INVALID_HANDLE_VALUE) {
-			std::cout << "invalid handle\n";
+	int userComPort = 3;
+	std::cout << "Enter COM port number that Resipod is connected to: ";
+	std::cin >> userComPort;
+	std::wstringstream comPort;
+	comPort << "\\\\.\\COM" << userComPort;
+
+	std::cout << "\nChecking port COM" << userComPort << "...";
+
+	Resipod = CreateFile(comPort.str().c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	if (Resipod == INVALID_HANDLE_VALUE) {
+		DWORD dwError = GetLastError();
+		if (dwError == ERROR_ACCESS_DENIED || dwError == ERROR_GEN_FAILURE || dwError == ERROR_SHARING_VIOLATION || dwError == ERROR_SEM_TIMEOUT) {
+			std::cout << "resource in use and not usable\n";
 		}
 		else {
-			ResipodParam.DCBlength = sizeof(ResipodParam);
+			std::cout << "error opening port\n";
+		}
+	}
+	else {
+		std::cout << "success!\n";
+		ResipodParam.DCBlength = sizeof(ResipodParam);
 
-			// Hardcode serial parameters based on Resipod data
-			GetCommState(Resipod, &ResipodParam);
-			ResipodParam.BaudRate = CBR_19200;
-			ResipodParam.ByteSize = 8;
-			ResipodParam.StopBits = 1;
-			ResipodParam.Parity = NOPARITY;
+		// Hardcode serial parameters based on Resipod data
+			
+		ResipodParam.BaudRate = CBR_19200;
+		ResipodParam.ByteSize = 8;
+		ResipodParam.StopBits = 1;
+		ResipodParam.Parity = NOPARITY;
+		ResipodParam.fOutX = FALSE;
+		ResipodParam.fInX = FALSE;
+		ResipodParam.fTXContinueOnXoff = FALSE;
+		SetCommState(Resipod, &ResipodParam);
 
-			// Set some timeout values
-			COMMTIMEOUTS timeouts = { 0 };
-			timeouts.ReadIntervalTimeout = 200;
-			timeouts.ReadTotalTimeoutConstant = 0;
-			timeouts.ReadTotalTimeoutMultiplier = 1;
-			timeouts.WriteTotalTimeoutConstant = 2000;
-			timeouts.WriteTotalTimeoutMultiplier = 10;
+		// Set some timeout values
+		COMMTIMEOUTS timeouts = { 0 };
+		timeouts.ReadIntervalTimeout = 200;
+		timeouts.ReadTotalTimeoutConstant = 1000;
+		timeouts.ReadTotalTimeoutMultiplier = 1;
+		timeouts.WriteTotalTimeoutConstant = 200;
+		timeouts.WriteTotalTimeoutMultiplier = 1;
 
-			// Get ID on port to see if it is a Proceq device
-			byte getID[] = { 0x10,0x49,0x44,0x0D };
-			char receiveID[8] = {0};
-			char correctID[8] = "Resipod";
-			DWORD bytesWriteID = 0;
-			DWORD bytesReadID = 0;
-			WriteFile(Resipod, getID, 5, &bytesWriteID, NULL);
-			ReadFile(Resipod, receiveID, 8, &bytesReadID, NULL);
+		// Get ID on port to see if it is a Proceq device
+		byte command[] = { 0xC1,0xD2,0x21 };
+		byte getID[] = { 0x10,0x49,0x44,0x0D };
+		char receiveID[8] = {0};
+		char correctID[8] = "Resipod";
+		DWORD bytesWriteID = 0;
+		DWORD bytesReadID = 0;
+		WriteFile(Resipod, command, 3, &bytesWriteID, NULL);
+		ReadFile(Resipod, receiveID, 3, &bytesReadID, NULL);
+		WriteFile(Resipod, getID, 5, &bytesWriteID, NULL);
+		ReadFile(Resipod, receiveID, 8, &bytesReadID, NULL);
+		if (SetCommTimeouts(Resipod, &timeouts) == 0) {
+			std::cout << "timeout\n";
+		}
+		else {
 			std::cout << receiveID << "\n";
-			if (strcmp(receiveID,correctID)) {
+			if (strcmp(receiveID, correctID)) {
 				return(j);
 			}
 		}
+			
 	}
+	
 	return(0);
 }
 
